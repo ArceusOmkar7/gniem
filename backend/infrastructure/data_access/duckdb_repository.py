@@ -355,6 +355,69 @@ class DuckDbRepository(IEventRepository):
             for row in rows
         ]
 
+    def get_top_organizations(
+        self,
+        filters: EventFilter,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        start_date, end_date = self._resolve_dates(filters)
+        start_int, end_exclusive_int = self._sql_date_bounds(start_date, end_date)
+
+        where_clauses = [
+            "SQLDATE >= ?",
+            "SQLDATE < ?",
+            "organizations IS NOT NULL",
+            "organizations <> []",
+        ]
+        params: list[Any] = [start_int, end_exclusive_int]
+
+        if filters.country_code:
+            where_clauses.append(
+                "(Actor1CountryCode = ? OR ActionGeo_CountryCode = ?)"
+            )
+            cc = filters.country_code.upper()
+            params.extend([cc, cc])
+
+        if filters.event_root_codes:
+            placeholders = ", ".join(["?" for _ in filters.event_root_codes])
+            where_clauses.append(f"EventRootCode IN ({placeholders})")
+            params.extend(filters.event_root_codes)
+
+        if filters.geo_country:
+            where_clauses.append("ActionGeo_CountryCode = ?")
+            params.append(filters.geo_country.upper())
+
+        theme_clause, theme_params = _build_theme_filter(filters.theme_category)
+        if theme_clause:
+            where_clauses.append(theme_clause)
+            params.extend(theme_params)
+
+        sub_where = " AND ".join(where_clauses)
+        sql = f"""
+            SELECT
+                org AS name,
+                SUM(NumMentions) AS count
+            FROM (
+                SELECT GLOBALEVENTID, NumMentions, organizations
+                FROM read_parquet('{self._parquet_glob}')
+                WHERE {sub_where}
+            ) AS ev, UNNEST(ev.organizations) AS orgs(org)
+            WHERE org IS NOT NULL AND org != ''
+            GROUP BY org
+            ORDER BY count DESC
+            LIMIT ?
+        """
+
+        params.append(limit)
+        rows = self._query(sql, params)
+        return [
+            {
+                "name": row.get("name") or "Unknown",
+                "count": int(row.get("count") or 0),
+            }
+            for row in rows
+        ]
+
     def get_top_sources(
         self,
         filters: EventFilter,
@@ -421,6 +484,80 @@ class DuckDbRepository(IEventRepository):
                 "count": int(row.get("count") or 0),
             }
             for row in rows
+        ]
+
+    def get_top_cities(
+        self,
+        filters: EventFilter,
+        limit: int = 10,
+        max_points: int = 2000,
+    ) -> list[dict[str, Any]]:
+        from backend.infrastructure.services.reverse_geocode_service import reverse_geocode_service
+
+        start_date, end_date = self._resolve_dates(filters)
+        start_int, end_exclusive_int = self._sql_date_bounds(start_date, end_date)
+
+        where_clauses = [
+            "SQLDATE >= ?",
+            "SQLDATE < ?",
+            "ActionGeo_Lat IS NOT NULL",
+            "ActionGeo_Long IS NOT NULL",
+        ]
+        params: list[Any] = [start_int, end_exclusive_int]
+
+        if filters.country_code:
+            where_clauses.append(
+                "(Actor1CountryCode = ? OR ActionGeo_CountryCode = ?)"
+            )
+            cc = filters.country_code.upper()
+            params.extend([cc, cc])
+
+        if filters.event_root_codes:
+            placeholders = ", ".join(["?" for _ in filters.event_root_codes])
+            where_clauses.append(f"EventRootCode IN ({placeholders})")
+            params.extend(filters.event_root_codes)
+
+        if filters.geo_country:
+            where_clauses.append("ActionGeo_CountryCode = ?")
+            params.append(filters.geo_country.upper())
+
+        theme_clause, theme_params = _build_theme_filter(filters.theme_category)
+        if theme_clause:
+            where_clauses.append(theme_clause)
+            params.extend(theme_params)
+
+        sql = f"""
+            SELECT
+                ActionGeo_Lat AS lat,
+                ActionGeo_Long AS lon,
+                COUNT(*) AS count
+            FROM read_parquet('{self._parquet_glob}')
+            WHERE {' AND '.join(where_clauses)}
+            GROUP BY ActionGeo_Lat, ActionGeo_Long
+            ORDER BY count DESC
+            LIMIT ?
+        """
+
+        rows = self._query(sql, params + [max_points])
+        if not rows:
+            return []
+
+        coords = [(row["lat"], row["lon"]) for row in rows]
+        geo_results = reverse_geocode_service.lookup_batch(coords)
+
+        city_counts: dict[str, int] = {}
+        for row, geo in zip(rows, geo_results):
+            city = (geo.get("city") or "").strip()
+            state = (geo.get("state") or "").strip()
+            if not city:
+                continue
+            label = f"{city}, {state}" if state else city
+            city_counts[label] = city_counts.get(label, 0) + int(row.get("count") or 0)
+
+        ranked = sorted(city_counts.items(), key=lambda x: x[1], reverse=True)
+        return [
+            {"name": name, "count": count}
+            for name, count in ranked[:limit]
         ]
 
     def get_map_aggregations(
@@ -1088,6 +1225,7 @@ class DuckDbRepository(IEventRepository):
                 "country_name": lookup_service.get_country_name(cc),
                 "country_display": lookup_service.get_country_display(cc),
                 "score": score,
+                "avg_goldstein": gs,
                 "conflict_ratio": cr,
                 "total_events": int(row.get("total_events") or 0),
             })

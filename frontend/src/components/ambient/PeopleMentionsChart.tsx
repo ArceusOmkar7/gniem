@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ResponsiveContainer,
@@ -25,6 +25,7 @@ interface CustomTooltipProps {
   payload?: Array<{ value: number }>;
   label?: string;
   isDark?: boolean;
+  metricLabel: string;
 }
 
 const truncateName = (name: string): string => {
@@ -35,7 +36,7 @@ const formatLabel = (value: unknown): string => {
   return (Number(value) || 0).toLocaleString();
 };
 
-const CustomTooltip = ({ active, payload, label, isDark }: CustomTooltipProps) => {
+const CustomTooltip = ({ active, payload, label, isDark, metricLabel }: CustomTooltipProps) => {
   if (!active || !payload?.length) return null;
   const entry = payload[0];
 
@@ -51,7 +52,7 @@ const CustomTooltip = ({ active, payload, label, isDark }: CustomTooltipProps) =
     >
       <div className="font-bold tracking-widest uppercase text-[10px] opacity-60 mb-1">{label}</div>
       <div className="flex items-center justify-between gap-4">
-        <span style={{ color: '#00f3ff' }}>Mentions</span>
+        <span style={{ color: '#00f3ff' }}>{metricLabel}</span>
         <span className="font-bold">{(entry?.value ?? 0).toLocaleString()}</span>
       </div>
     </div>
@@ -64,10 +65,37 @@ export const PeopleMentionsChart: React.FC<PeopleMentionsChartProps> = ({
   themeCategory,
 }) => {
   const { dateRange, dateWindowReady, isDarkTheme } = useStore();
+  const [activeTab, setActiveTab] = useState<'people' | 'organizations' | 'cities'>('people');
+
+  const tabConfig = useMemo(() => ({
+    people: {
+      label: 'People',
+      metric: 'Mentions',
+      accent: '#00f3ff',
+      fetcher: () => apiService.getTopPeople(dateRange[0], dateRange[1], eventRootCodes, geoFilter, themeCategory, 10),
+      subtitle: 'GKG persons list',
+    },
+    organizations: {
+      label: 'Orgs',
+      metric: 'Mentions',
+      accent: '#38bdf8',
+      fetcher: () => apiService.getTopOrganizations(dateRange[0], dateRange[1], eventRootCodes, geoFilter, themeCategory, 10),
+      subtitle: 'GKG organizations list',
+    },
+    cities: {
+      label: 'Cities',
+      metric: 'Events',
+      accent: '#22c55e',
+      fetcher: () => apiService.getTopCities(dateRange[0], dateRange[1], eventRootCodes, geoFilter, themeCategory, 10),
+      subtitle: 'Reverse geocoded',
+    },
+  }), [dateRange, eventRootCodes, geoFilter, themeCategory]);
+
+  const activeConfig = tabConfig[activeTab];
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['top-people', dateRange, eventRootCodes, geoFilter, themeCategory],
-    queryFn: () => apiService.getTopPeople(dateRange[0], dateRange[1], eventRootCodes, geoFilter, themeCategory, 10),
+    queryKey: ['top-entities', activeTab, dateRange, eventRootCodes, geoFilter, themeCategory],
+    queryFn: () => activeConfig.fetcher(),
     enabled: dateWindowReady,
     staleTime: 60_000,
   });
@@ -79,9 +107,26 @@ export const PeopleMentionsChart: React.FC<PeopleMentionsChartProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Users size={14} className="text-cyber-blue" />
-          <span className="data-ink text-cyber-blue">Top People Mentioned</span>
+          <span className="data-ink text-cyber-blue">Top Entities</span>
         </div>
-        <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest">GKG persons list</span>
+        <span className="text-[10px] font-mono text-white/50 uppercase tracking-widest">{activeConfig.subtitle}</span>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        {(['people', 'organizations', 'cities'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={
+              `text-[9px] font-mono uppercase tracking-widest px-3 py-1 rounded border transition-colors ` +
+              (activeTab === tab
+                ? 'text-white border-cyber-blue/50 bg-cyber-blue/10'
+                : 'text-white/40 border-white/10 hover:border-white/20')
+            }
+          >
+            {tabConfig[tab].label}
+          </button>
+        ))}
       </div>
 
       <div className="h-[280px]">
@@ -90,13 +135,13 @@ export const PeopleMentionsChart: React.FC<PeopleMentionsChartProps> = ({
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-2 border-t-cyber-blue border-transparent rounded-full animate-spin" />
               <span className="text-[10px] font-mono text-white/30 uppercase tracking-widest animate-pulse">
-                Loading people profile…
+                Loading top entities…
               </span>
             </div>
           </div>
         ) : isError || !chartData.length ? (
           <div className="h-full flex items-center justify-center text-[11px] font-mono text-white/30 uppercase">
-            No people data available for selected filters
+            No entity data available for selected filters
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -124,8 +169,8 @@ export const PeopleMentionsChart: React.FC<PeopleMentionsChartProps> = ({
                 axisLine={false}
                 tickLine={false}
               />
-              <Tooltip content={<CustomTooltip isDark={isDarkTheme} />} cursor={{ fill: isDarkTheme ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)' }} />
-              <Bar dataKey="count" fill="#00f3ff" radius={[4, 4, 4, 4]}>
+              <Tooltip content={<CustomTooltip isDark={isDarkTheme} metricLabel={activeConfig.metric} />} cursor={{ fill: isDarkTheme ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)' }} />
+              <Bar dataKey="count" fill={activeConfig.accent} radius={[4, 4, 4, 4]}>
                 <LabelList dataKey="count" position="right" formatter={formatLabel} style={{ fill: isDarkTheme ? '#E5E7EB' : '#0F172A', fontSize: 10, fontFamily: 'monospace' }} />
               </Bar>
             </BarChart>

@@ -352,6 +352,7 @@ class ThreatCountryEntry(BaseModel):
     country_name: str | None = None
     country_display: str | None = None
     score: int = Field(description="0–100 risk score (higher = more dangerous).")
+    avg_goldstein: float | None = Field(default=None, description="Average Goldstein scale for the country.")
     conflict_ratio: float
     total_events: int
  

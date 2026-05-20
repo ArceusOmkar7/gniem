@@ -41,6 +41,12 @@ def _mock_hot_repository():
     mock.get_top_sources.return_value = [
         {"name": "example.com", "count": 3},
     ]
+    mock.get_top_organizations.return_value = [
+        {"name": "Example Org", "count": 5},
+    ]
+    mock.get_top_cities.return_value = [
+        {"name": "Test City", "count": 8},
+    ]
     return mock
 
 @pytest.fixture
@@ -94,3 +100,31 @@ def test_top_sources_api(override_dependencies):
     assert data["data"][0]["count"] == 3
 
     hot_repo_mock.get_top_sources.assert_called_once()
+
+
+def test_top_organizations_api(override_dependencies):
+    _, _, hot_repo_mock = override_dependencies
+
+    response = client.get("/api/v1/events/top-organizations?limit=5")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["data"][0]["name"] == "Example Org"
+    assert data["data"][0]["count"] == 5
+
+    hot_repo_mock.get_top_organizations.assert_called_once()
+
+
+def test_top_cities_api(override_dependencies):
+    _, _, hot_repo_mock = override_dependencies
+
+    response = client.get("/api/v1/events/top-cities?limit=5")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["data"][0]["name"] == "Test City"
+    assert data["data"][0]["count"] == 8
+
+    hot_repo_mock.get_top_cities.assert_called_once()

@@ -176,6 +176,7 @@ export interface ThreatCountryEntry {
   country_name?: string;
   country_display?: string;
   score: number;
+  avg_goldstein?: number | null;
   conflict_ratio: number;
   total_events: number;
 }
