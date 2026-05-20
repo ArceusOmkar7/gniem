@@ -1,22 +1,60 @@
-version: "3.9"
-
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: gniem-backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
+    env_file:
+      - .env
     environment:
-      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp-key.json
-      - GDELT_DATASET=${GDELT_DATASET:-bigquery-public-data.gdelt_2_events}
-      - GDELT_TABLE=${GDELT_TABLE:-events}
-      - DEFAULT_LOOKBACK_DAYS=${DEFAULT_LOOKBACK_DAYS:-7}
-      - DEFAULT_QUERY_LIMIT=${DEFAULT_QUERY_LIMIT:-10000}
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HOT_TIER_PATH=/data/hot_tier
+      - CACHE_PATH=/data/cache
+      - ACTION_GEO_COUNTRY_CODES_PATH=/data/LOOKUP-COUNTRIES.txt
+      - CAMEO_COUNTRY_CODES_PATH=/data/CAMEO.country.txt
+      - GDELT_COUNTRY_CODES_PATH=/data/CAMEO.country.txt
     volumes:
       - ${GOOGLE_APPLICATION_CREDENTIALS}:/secrets/gcp-key.json:ro
+      - gniem-data:/data
     restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+        VITE_MAPBOX_ACCESS_TOKEN: ${VITE_MAPBOX_ACCESS_TOKEN}
+    container_name: gniem-web
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: scheduler/Dockerfile
+    container_name: gniem-scheduler
+    depends_on:
+      - backend
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp-key.json
+      - HOT_TIER_PATH=/data/hot_tier
+      - CACHE_PATH=/data/cache
+      - ACTION_GEO_COUNTRY_CODES_PATH=/data/LOOKUP-COUNTRIES.txt
+      - CAMEO_COUNTRY_CODES_PATH=/data/CAMEO.country.txt
+      - GDELT_COUNTRY_CODES_PATH=/data/CAMEO.country.txt
+      - TZ=UTC
+    volumes:
+      - ${GOOGLE_APPLICATION_CREDENTIALS}:/secrets/gcp-key.json:ro
+      - gniem-data:/data
+    restart: unless-stopped
+
+volumes:
+  gniem-data:

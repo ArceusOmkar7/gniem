@@ -1,0 +1,14 @@
+**/.venv
+**/venv
+**/__pycache__
+**/.pytest_cache
+**/.git
+data/cache/
+backend/tests
+frontend/node_modules
+dist
+.env
+*.json
+!package.json
+!tsconfig.json
+!tsconfig.*.json

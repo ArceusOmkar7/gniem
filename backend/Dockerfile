@@ -3,7 +3,7 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # ---- Runtime stage ----
@@ -18,11 +18,18 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 
 # Copy application code
-COPY . .
+COPY backend /app/backend
+
+# Copy initial data into the image
+# This allows named volumes to be auto-populated on first run
+COPY data /data
 
 # Non-root user for security
-RUN useradd --create-home appuser
+RUN useradd --create-home appuser && chown -R appuser:appuser /app /data
 USER appuser
+
+# Ensure backend package is discoverable
+ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
