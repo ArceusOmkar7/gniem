@@ -146,6 +146,12 @@ export interface ForecastResponse {
 // 15.1 — Global Pulse
 // ---------------------------------------------------------------------------
  
+export interface SentimentOverview {
+  hostile: number;
+  neutral: number;
+  positive: number;
+}
+
 export interface GlobalPulseResponse {
   total_events_today: number;
   most_active_country: string | null;
@@ -155,6 +161,7 @@ export interface GlobalPulseResponse {
   most_hostile_display?: string | null;
   avg_global_tone: number | null;
   global_conflict_ratio: number;
+  sentiment?: SentimentOverview | null;
 }
 
 export interface EntityCountResponse {
@@ -176,6 +183,7 @@ export interface ThreatCountryEntry {
   country_name?: string;
   country_display?: string;
   score: number;
+  avg_goldstein?: number | null;
   conflict_ratio: number;
   total_events: number;
 }

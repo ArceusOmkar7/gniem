@@ -311,6 +311,54 @@ export const apiService = {
     return response.json();
   },
 
+  getTopOrganizations: async (
+    startDate: string,
+    endDate: string,
+    eventRootCodes?: string[] | null,
+    geoFilter?: GeoFilter,
+    themeCategory?: string | null,
+    limit: number = 10,
+  ): Promise<EntityCountListResponse> => {
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      limit: limit.toString(),
+    });
+    if (eventRootCodes?.length) params.append('event_root_codes', eventRootCodes.join(','));
+    if (themeCategory) params.append('theme_category', themeCategory);
+    appendGeoFilters(params, geoFilter);
+
+    const response = await fetch(`${API_BASE_URL}/events/top-organizations?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch top organizations: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  getTopCities: async (
+    startDate: string,
+    endDate: string,
+    eventRootCodes?: string[] | null,
+    geoFilter?: GeoFilter,
+    themeCategory?: string | null,
+    limit: number = 10,
+  ): Promise<EntityCountListResponse> => {
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      limit: limit.toString(),
+    });
+    if (eventRootCodes?.length) params.append('event_root_codes', eventRootCodes.join(','));
+    if (themeCategory) params.append('theme_category', themeCategory);
+    appendGeoFilters(params, geoFilter);
+
+    const response = await fetch(`${API_BASE_URL}/events/top-cities?${params}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch top cities: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
   getTopSources: async (
     startDate: string,
     endDate: string,

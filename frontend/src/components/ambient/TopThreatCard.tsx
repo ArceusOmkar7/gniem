@@ -140,6 +140,9 @@ const ThreatRow = ({
         <span className="text-[9px] font-mono text-white/30">
           {(entry.conflict_ratio * 100).toFixed(0)}% conflict
         </span>
+        <span className="text-[9px] font-mono text-white/25">
+          Goldstein {entry.avg_goldstein != null ? entry.avg_goldstein.toFixed(2) : '--'}
+        </span>
         <span className="text-[9px] font-mono text-white/20">
           {entry.total_events.toLocaleString()} events
         </span>
