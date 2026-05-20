@@ -1111,7 +1111,11 @@ class DuckDbRepository(IEventRepository):
                 COUNT(*)                                                              AS total_events,
                 MODE(ActionGeo_CountryCode)                                           AS most_active_country,
                 AVG(AvgTone)                                                          AS avg_global_tone,
-                SUM(CASE WHEN QuadClass IN (3, 4) THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS conflict_ratio
+                SUM(CASE WHEN QuadClass IN (3, 4) THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS conflict_ratio,
+                -- Sentiment counts
+                SUM(CASE WHEN QuadClass IN (3, 4) THEN 1 ELSE 0 END) AS hostile_count,
+                SUM(CASE WHEN QuadClass = 2 OR (QuadClass = 1 AND AvgTone > 2.0) THEN 1 ELSE 0 END) AS positive_count,
+                SUM(CASE WHEN QuadClass = 1 AND AvgTone <= 2.0 THEN 1 ELSE 0 END) AS neutral_count
             FROM read_parquet('{self._parquet_glob}')
             WHERE {where_clause}
         """
@@ -1146,8 +1150,19 @@ class DuckDbRepository(IEventRepository):
         avg_tone = g.get("avg_global_tone")
         conflict_ratio = float(g.get("conflict_ratio") or 0.0)
  
+        total = int(g.get("total_events") or 0)
+        sentiment = {
+            "hostile": 0.0,
+            "neutral": 0.0,
+            "positive": 0.0
+        }
+        if total > 0:
+            sentiment["hostile"] = round((float(g.get("hostile_count") or 0) / total) * 100, 1)
+            sentiment["neutral"] = round((float(g.get("neutral_count") or 0) / total) * 100, 1)
+            sentiment["positive"] = round((float(g.get("positive_count") or 0) / total) * 100, 1)
+
         return {
-            "total_events_today": int(g.get("total_events") or 0),
+            "total_events_today": total,
             "most_active_country": most_active_cc,
             "most_active_display": lookup_service.get_country_display(most_active_cc) if most_active_cc else None,
             "most_active_count": most_active_count,
@@ -1155,6 +1170,7 @@ class DuckDbRepository(IEventRepository):
             "most_hostile_display": lookup_service.get_country_display(most_hostile_cc) if most_hostile_cc else None,
             "avg_global_tone": float(avg_tone) if avg_tone is not None else None,
             "global_conflict_ratio": conflict_ratio,
+            "sentiment": sentiment,
         }
  
     # ------------------------------------------------------------------

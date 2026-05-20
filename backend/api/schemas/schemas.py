@@ -326,6 +326,12 @@ class AnalyticsDeltaResponse(BaseModel):
 # 15.1 — Global Pulse
 # ---------------------------------------------------------------------------
  
+class SentimentOverview(BaseModel):
+    """Hostile / Neutral / Positive splits for the donut chart."""
+    hostile: float = Field(default=0.0, description="Percentage of events that are hostile (QuadClass 3, 4).")
+    neutral: float = Field(default=0.0, description="Percentage of events that are neutral (QuadClass 1 with neutral tone).")
+    positive: float = Field(default=0.0, description="Percentage of events that are positive (QuadClass 2 or QuadClass 1 with positive tone).")
+
 class GlobalPulseResponse(BaseModel):
     """Live global aggregates for the stats ticker (15.1)."""
  
@@ -339,6 +345,7 @@ class GlobalPulseResponse(BaseModel):
     most_hostile_display: str | None = Field(description="Display string for most-hostile country.")
     avg_global_tone: float | None = Field(description="Mean AvgTone across all events in the window.")
     global_conflict_ratio: float = Field(description="Fraction of events with QuadClass 3 or 4.")
+    sentiment: SentimentOverview | None = Field(default=None, description="Sentiment distribution for the donut chart.")
  
  
 # ---------------------------------------------------------------------------

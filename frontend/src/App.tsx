@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { GlobalEventMap } from './components/map/GlobalEventMap';
+import { MinimalEventMap } from './components/map/MinimalEventMap';
 import { IntelligencePanel } from './components/tables/IntelligencePanel';
 import { SystemControlPanel } from './components/tables/SystemControlPanel';
 import { GlobalStatsTicker } from './components/ambient/GlobalStatsTicker';
@@ -10,13 +11,14 @@ import { DateRangeSlider } from './components/ambient/DateRangeSlider';
 import { EventTrendChart } from './components/ambient/EventTrendChart';
 import { PeopleMentionsChart } from './components/ambient/PeopleMentionsChart';
 import { SourceMentionsChart } from './components/ambient/SourceMentionsChart';
+import { SentimentDonutChart } from './components/ambient/SentimentDonutChart';
 import { GeoFilterBar } from './components/ambient/GeoFilterBar';
 import { LiveNewsWall } from './components/ambient/LiveNewsWall';
 import { SearchableDropdown, type DropdownOption } from './components/ambient/SearchableDropdown';
 import { useStore } from './store/useStore';
 import { apiService } from './services/api';
 import { useQuery } from '@tanstack/react-query';
-import { Globe, Calendar, Terminal, Database, Activity, Layers, Map as MapIcon, ArrowLeft, X, Sun, Moon } from 'lucide-react';
+import { Globe, Calendar, Terminal, Database, Activity, Layers, Map as MapIcon, ArrowLeft, X, Sun, Moon, Maximize2 } from 'lucide-react';
 
 function formatDistanceToNow(dateStr: string | null): string {
   if (!dateStr) return 'NEVER';
@@ -244,7 +246,7 @@ function App() {
           </button>
 
           {/* Map Mode Toggle */}
-          {viewMode === 'map' && (
+          {(viewMode === 'map' || viewMode === 'dashboard') && (
             <div className="flex items-center bg-surface-900 border border-white/10 rounded overflow-hidden">
               <button
                 onClick={() => setMapMode('heatmap')}
@@ -367,14 +369,17 @@ function App() {
                 </div>
               </div>
 
-              {/* Event Volume Trend Chart */}
-              <EventTrendChart
-                eventRootCodes={eventRootCodes}
-                geoFilter={geoFilter}
-                themeCategory={activeThemeCategory}
-              />
+              {/* Event Volume Trend Chart - Full width */}
+              <div className="w-full">
+                <EventTrendChart
+                  eventRootCodes={eventRootCodes}
+                  geoFilter={geoFilter}
+                  themeCategory={activeThemeCategory}
+                />
+              </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Row: Entities (People) and Sources */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <PeopleMentionsChart
                   eventRootCodes={eventRootCodes}
                   geoFilter={geoFilter}
@@ -387,90 +392,52 @@ function App() {
                 />
               </div>
 
-              {/* Bento Grid layout */}
-              {activeCategory === 'ALL' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Row: Inline Map & Stats Stack */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Inline Map View */}
+                <div className="lg:col-span-8 glass-panel rounded-xl overflow-hidden relative group border-white/5 h-[500px]">
+                   <div className="absolute top-4 right-4 z-10">
+                     <button
+                       onClick={() => setViewMode('map')}
+                       className="bg-surface-900/80 hover:bg-cyber-blue hover:text-surface-900 border border-cyber-blue/50 p-2 rounded transition-all group/btn flex items-center gap-2"
+                       title="Open Globe View"
+                     >
+                        <Maximize2 size={16} />
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-widest hidden group-hover/btn:block">Open Globe View</span>
+                     </button>
+                   </div>
+                   <MinimalEventMap themeCategory={activeThemeCategory} />
+                </div>
 
-                  {/* Main Middle Column - Top Threats & Map */}
-                  <div className="lg:col-span-8 flex flex-col gap-6">
-                    {/* Map Launch Hero Card (Condensed) */}
-                    <div
-                      onClick={() => setViewMode('map')}
-                      className="map-launch-card w-full h-32 glass-panel rounded-xl overflow-hidden relative group cursor-pointer border-cyber-blue/30 hover:border-cyber-blue transition-all duration-500 shadow-lg hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] flex items-center px-8 justify-between"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-cyber-blue/5 to-transparent group-hover:from-cyber-blue/10 transition-colors duration-500" />
-                      <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-right bg-cover opacity-10 group-hover:opacity-20 transition-opacity duration-700 pointer-events-none" />
-
-                      <div className="relative z-10 flex items-center gap-6">
-                        <div className="w-14 h-14 rounded-full bg-cyber-blue/10 border border-cyber-blue/50 flex items-center justify-center group-hover:scale-110 group-hover:bg-cyber-blue/20 transition-all duration-500">
-                          <MapIcon size={28} className="text-cyber-blue" />
-                        </div>
-                        <div>
-                          <h2 className="text-xl md:text-2xl font-mono font-bold uppercase tracking-widest text-white glowing-text">
-                            Launch Interactive Map
-                          </h2>
-                          <p className="text-xs font-mono text-white/70 tracking-wide mt-1">
-                            View global geospatial clusters and realtime intel
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative z-10 hidden md:flex items-center gap-2 text-cyber-blue/80 group-hover:text-cyber-blue transition-colors font-mono text-xs uppercase tracking-widest font-bold bg-cyber-blue/10 px-4 py-2 rounded-full border border-cyber-blue/20">
-                        Open View <ArrowLeft size={14} className="rotate-180 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-
-                    <LiveNewsWall />
-
+                {/* Right Stack: Sentiment & Threats */}
+                <div className="lg:col-span-4 flex flex-col gap-6 h-[500px]">
+                  <div className="flex-1 min-h-0">
+                    <SentimentDonutChart />
                   </div>
-
-                    {/* Right Column - Spike Alerts + Threat Monitor */}
-                  <div className="lg:col-span-4 flex flex-col gap-6">
-                      <div className="rounded-xl overflow-hidden shadow-lg border border-white/5 h-[400px]">
-                      <SpikeAlertsCard />
-                    </div>
-                      <div className="rounded-xl overflow-hidden shadow-lg border border-white/5 h-[400px]">
-                        <TopThreatCard />
-                      </div>
+                  <div className="flex-1 min-h-0">
+                    <TopThreatCard />
                   </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-6">
-                  {/* Map Launch Hero Card (Condensed) */}
-                  <div
-                    onClick={() => setViewMode('map')}
-                    className="map-launch-card w-full h-32 glass-panel rounded-xl overflow-hidden relative group cursor-pointer border-cyber-blue/30 hover:border-cyber-blue transition-all duration-500 shadow-lg hover:shadow-[0_0_30px_rgba(0,243,255,0.15)] flex items-center px-8 justify-between"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyber-blue/5 to-transparent group-hover:from-cyber-blue/10 transition-colors duration-500" />
-                    <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-right bg-cover opacity-10 group-hover:opacity-20 transition-opacity duration-700 pointer-events-none" />
+              </div>
 
-                    <div className="relative z-10 flex items-center gap-6">
-                      <div className="w-14 h-14 rounded-full bg-cyber-blue/10 border border-cyber-blue/50 flex items-center justify-center group-hover:scale-110 group-hover:bg-cyber-blue/20 transition-all duration-500">
-                        <MapIcon size={28} className="text-cyber-blue" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl md:text-2xl font-mono font-bold uppercase tracking-widest text-white glowing-text">
-                          {activeCategory} INTELLIGENCE MAP
-                        </h2>
-                        <p className="text-xs font-mono text-white/70 tracking-wide mt-1">
-                          View interactive geospatial clusters and intel filtered for {activeCategory}
-                        </p>
-                      </div>
-                    </div>
+              {/* Row: YouTube Embed (LiveNewsWall) & Anomalies (SpikeAlertsCard) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-8">
+                  <LiveNewsWall />
+                </div>
+                <div className="lg:col-span-4 h-[400px]">
+                  <SpikeAlertsCard />
+                </div>
+              </div>
 
-                    <div className="relative z-10 hidden md:flex items-center gap-2 text-cyber-blue/80 group-hover:text-cyber-blue transition-colors font-mono text-xs uppercase tracking-widest font-bold bg-cyber-blue/10 px-4 py-2 rounded-full border border-cyber-blue/20">
-                      Open View <ArrowLeft size={14} className="rotate-180 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-
-                  {/* The Trending News Feed for this category */}
-                  <TrendingNewsFeed
+              {/* Category-specific feed */}
+              {activeCategory !== 'ALL' && (
+                 <TrendingNewsFeed
                     category={activeCategory}
                     eventRootCodes={eventRootCodes}
                     geoFilter={geoFilter}
                     themeCategory={activeThemeCategory}
                   />
-                </div>
               )}
 
               {/* Padding at the bottom so the ticker doesn't overlap */}

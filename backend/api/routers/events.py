@@ -631,6 +631,7 @@ def global_pulse(
         most_hostile_display=lookup_service.get_country_display(most_hostile) if most_hostile else None,
         avg_global_tone=metrics["avg_global_tone"],
         global_conflict_ratio=metrics["global_conflict_ratio"],
+        sentiment=metrics["sentiment"],
     )
  
     with _pulse_cache_lock:
