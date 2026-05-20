@@ -66,11 +66,11 @@ EVENT_COLUMN_INDEX: dict[str, int] = {
     "NumSources": 32,
     "AvgTone": 34,
     "Actor1Geo_CountryCode": 37,
-    "Actor2Geo_CountryCode": 44,
-    "ActionGeo_CountryCode": 51,
-    "ActionGeo_Lat": 53,
-    "ActionGeo_Long": 54,
-    "SOURCEURL": 57,
+    "Actor2Geo_CountryCode": 45,
+    "ActionGeo_CountryCode": 53,
+    "ActionGeo_Lat": 56,
+    "ActionGeo_Long": 57,
+    "SOURCEURL": 60,
 }
 
 # GKG 2.1 CSV positional indexes.
@@ -230,6 +230,11 @@ def run_realtime_fetch() -> Path | None:
             urls = parse_lastupdate_urls(r.text)
     except Exception as e:
         print(f"Failed to fetch lastupdate.txt: {e}")
+        return None
+
+    missing = [key for key in ("events", "mentions", "gkg") if key not in urls]
+    if missing:
+        print(f"Missing URLs in lastupdate.txt: {', '.join(missing)}")
         return None
 
     # 1. Fetch all three streams
