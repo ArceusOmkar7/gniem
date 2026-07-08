@@ -2,8 +2,9 @@
 
 GNIEM is a geopolitical intelligence dashboard and event-monitoring platform built on top of the GDELT 2.1 global database. The project implements a cost-optimized, hybrid OLAP architecture to serve analytical and predictive intelligence without the high infrastructure overhead typically associated with multi-terabyte datasets.
 
-![](docs/images/gniem-min-arch.png)
-
+<p align="center">
+    <img src="docs/images/gniem-min-arch.png" width="100%">
+</p>
 ---
 
 ## Architecture Design
@@ -25,7 +26,10 @@ To address the traditional trade-offs between storage costs and analytical query
 
 ### 1. Main Dashboard View
 *A comprehensive bento-grid interface depicting key metrics, instability indexing, activity trends, and recent spike alerts.*
-![](docs/images/dashboard-1.png) ![](docs/images/dashboard-2.png)
+<p align="center">
+  <img src="docs/images/dashboard-1.png" width="48%">
+  <img src="docs/images/dashboard-2.png" width="48%">
+</p>
 
 ### 2. Interactive Map & Heatmap Shading
 *High-fidelity Mapbox GL JS canvas rendering geographic concentration grids at low zoom, shifting to individual event detail markers on closer zoom levels.*
@@ -33,7 +37,10 @@ To address the traditional trade-offs between storage costs and analytical query
 
 ### 3. Deep Intelligence Sidebar & System Drawer
 *Contextual analysis displaying Wikipedia-enriched entity mentions, live YouTube news streams, and system control variables.*
-![](docs/images/sidebar-1.png) ![](docs/images/sidebar-2.png)
+<p align="center">
+  <img src="docs/images/sidebar-1.png" width="48%">
+  <img src="docs/images/sidebar-2.png" width="48%">
+</p>
 
 
 ---
