@@ -5,6 +5,7 @@ GNIEM is a geopolitical intelligence dashboard and event-monitoring platform bui
 <p align="center">
     <img src="docs/images/gniem-min-arch.png" width="75%">
 </p>
+
 ---
 
 ## Architecture Design
@@ -26,19 +27,22 @@ To address the traditional trade-offs between storage costs and analytical query
 
 ### 1. Main Dashboard View
 *A comprehensive bento-grid interface depicting key metrics, instability indexing, activity trends, and recent spike alerts.*
+
+| | |
 | --- | --- |
 | ![](docs/images/dashboard-1.png) | ![](docs/images/dashboard-2.png) |
-| --- | --- |
 
 ### 2. Interactive Map & Heatmap Shading
 *High-fidelity Mapbox GL JS canvas rendering geographic concentration grids at low zoom, shifting to individual event detail markers on closer zoom levels.*
+
 ![](docs/images/events-map.png)
 
 ### 3. Deep Intelligence Sidebar & System Drawer
 *Contextual analysis displaying Wikipedia-enriched entity mentions, live YouTube news streams, and system control variables.*
+
+| | |
 | --- | --- |
 | ![](docs/images/sidebar-1.png) | ![](docs/images/sidebar-2.png) |
-| --- | --- |
 
 
 ---
@@ -82,7 +86,7 @@ This system implements explicit restrictions to keep cloud compute footprints wi
 ## Getting Started
 
 ### Prerequisites
-*   [Docker](https://www.docker.com/) and Docker Compose installed.
+*   [Docker](https://www.docker.com/) and Docker Compose installed. *[optional]*
 *   A Google Cloud Platform project with the BigQuery API enabled, and a Service Account key file.
 *   A [Groq API Key](https://wow.groq.com/) (required for LLM components).
 *   A [Mapbox Access Token](https://docs.mapbox.com/help/getting-started/access-tokens/) (required for map canvas rendering).
