@@ -26,7 +26,6 @@ To address the traditional trade-offs between storage costs and analytical query
 
 ### 1. Main Dashboard View
 *A comprehensive bento-grid interface depicting key metrics, instability indexing, activity trends, and recent spike alerts.*
-| MLflow Runs | Run Overview |
 | --- | --- |
 | ![](docs/images/dashboard-1.png) | ![](docs/images/dashboard-2.png) |
 | --- | --- |
