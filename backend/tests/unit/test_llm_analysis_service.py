@@ -1,6 +1,10 @@
 from types import SimpleNamespace
+import json
 
 import pytest
+import httpx
+import respx
+from pydantic import ValidationError
 
 from backend.infrastructure.config.settings import Settings
 from backend.infrastructure.services import llm_analysis_service as llm_module
@@ -74,3 +78,39 @@ async def test_llm_analysis_service_sends_json_response_format(monkeypatch, tmp_
 
     assert fake_completion.calls
     assert fake_completion.calls[0]["response_format"] == {"type": "json_object"}
+
+
+@pytest.mark.asyncio
+async def test_openrouter_uses_free_model_and_compatible_transport(tmp_path):
+    content = json.dumps({
+        "summary": "Test summary", "sentiment": "Neutral", "entities": {},
+        "themes": [], "confidence": 0.8,
+    })
+    settings = Settings(
+        gcp_project_id="test-project", openrouter_api_key="test-openrouter-key",
+        groq_api_key="unused-groq-key", hot_tier_path=str(tmp_path / "hot"),
+        cache_path=str(tmp_path / "cache"),
+    )
+    with respx.mock:
+        route = respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+            return_value=httpx.Response(200, json={
+                "id": "test", "object": "chat.completion", "created": 0,
+                "model": settings.openrouter_model_name,
+                "choices": [{"index": 0, "finish_reason": "stop",
+                             "message": {"role": "assistant", "content": content}}],
+            })
+        )
+        result = await LLMAnalysisService(settings).analyze_event("Public news text")
+        assert result.summary == "Test summary"
+        request = route.calls[0].request
+        assert request.headers["authorization"] == "Bearer test-openrouter-key"
+        assert json.loads(request.content)["models"] == [
+            "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3.5-super-vl:free",
+        ]
+
+
+@pytest.mark.parametrize("field", ["openrouter_model_name", "openrouter_fallback_model_name"])
+def test_openrouter_rejects_paid_model(tmp_path, field):
+    with pytest.raises(ValidationError):
+        Settings(gcp_project_id="test-project", **{field: "paid/model"},
+                 hot_tier_path=str(tmp_path / "hot"), cache_path=str(tmp_path / "cache"))

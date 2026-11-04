@@ -15,6 +15,7 @@ skills-lock.json
 
 # Virtual environments
 .venv/
+.venv*/
 venv/
 env/
 
@@ -27,6 +28,9 @@ env/
 
 # Environment
 .env
+.env.gcp
+.env.public
+ACCESS.txt
 *.env.local
 
 # Local runtime data
@@ -35,8 +39,10 @@ data/
 # GCP keys — NEVER commit
 *.json
 !package.json
+!package-lock.json
 !tsconfig.json
 !tsconfig.*.json
+!docs/crisis-onset/*.json
 
 # Docker
 docker-compose.override.yml

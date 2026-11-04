@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { useStore } from '../../store/useStore';
 import { apiService } from '../../services/api';
-import { Users, ExternalLink } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 interface PeopleMentionsChartProps {
   eventRootCodes?: string[] | null;

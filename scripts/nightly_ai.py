@@ -252,7 +252,7 @@ async def ensure_country_codes_file(
 
     codes_file.parent.mkdir(parents=True, exist_ok=True)
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
             response = await client.get(configured_url)
             response.raise_for_status()
         codes_file.write_text(response.text, encoding="utf-8")
@@ -315,6 +315,8 @@ class GroqBriefingClient:
     api_key: str
     model: str = "llama-3.3-70b-versatile"
     codebook_context: str = ""
+    base_url: str = "https://api.groq.com/openai/v1"
+    fallback_model: str | None = None
 
     async def generate_briefing(
         self,
@@ -356,13 +358,23 @@ class GroqBriefingClient:
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.2,
-            "max_tokens": 320,
+            "max_tokens": 1024,
         }
+        if self.model.startswith("openai/gpt-oss-"):
+            payload["reasoning_effort"] = "low"
+        if "openrouter.ai" in self.base_url:
+            payload["reasoning"] = {"enabled": False}
+            models = [payload.pop("model")]
+            if self.fallback_model and self.fallback_model not in models:
+                models.append(self.fallback_model)
+            if not all(model.endswith(":free") for model in models):
+                raise ValueError("OpenRouter briefing models must be free variants")
+            payload["models"] = models
 
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
+                    f"{self.base_url}/chat/completions",
                     headers=headers,
                     json=payload,
                 )
@@ -468,10 +480,14 @@ async def build_briefings_payload(settings: Settings) -> dict[str, dict[str, str
     codebook_context = "\n".join(codebook_lines)
 
     groq_client = None
-    groq_key = getattr(settings, "groq_api_key", None)
+    provider = "openrouter" if settings.openrouter_api_key else "groq"
+    groq_key = settings.openrouter_api_key or settings.groq_api_key
     if isinstance(groq_key, str) and groq_key.strip():
         groq_client = GroqBriefingClient(
             api_key=groq_key.strip(),
+            model=(settings.openrouter_model_name if provider == "openrouter" else settings.groq_model_name),
+            base_url=("https://openrouter.ai/api/v1" if provider == "openrouter" else "https://api.groq.com/openai/v1"),
+            fallback_model=settings.openrouter_fallback_model_name if provider == "openrouter" else None,
             codebook_context=codebook_context,
         )
 
@@ -498,7 +514,10 @@ async def build_briefings_payload(settings: Settings) -> dict[str, dict[str, str
                 summary=summary,
             )
             if briefing_text:
-                source = "groq"
+                source = provider
+            # Free OpenRouter models share a 20-request/minute platform limit.
+            if provider == "openrouter":
+                await asyncio.sleep(3.2)
 
         if briefing_text and is_low_quality_briefing(briefing_text):
             source = "fallback_invalid_groq"
@@ -623,34 +642,42 @@ def build_theme_category_counts(settings: Settings) -> dict:
         start_int = sql_date_int(start_date)
         end_int = sql_date_int(anchor_date + timedelta(days=1))
 
+        theme_type = conn.execute(
+            f"DESCRIBE SELECT themes FROM read_parquet('{parquet_glob}')"
+        ).fetchone()[1]
+        theme_array = (
+            "string_split(themes, ';')"
+            if theme_type == "VARCHAR" else "themes"
+        )
+        # Keep the existing first-matching-category rule and duplicate counts,
+        # while aggregating inside DuckDB instead of materializing every theme.
+        cases = []
+        for category, prefixes in THEME_CATEGORY_MAP.items():
+            checks = " OR ".join(
+                "contains(upper(theme), '" + prefix.replace("'", "''") + "')"
+                for prefix in prefixes
+            )
+            cases.append(f"WHEN {checks} THEN '{category}'")
         rows = conn.execute(
             f"""
-            SELECT themes
-            FROM read_parquet('{parquet_glob}')
-            WHERE SQLDATE >= ? AND SQLDATE < ?
-              AND themes IS NOT NULL
-            """,
-            [start_int, end_int],
+            WITH source AS (
+                SELECT themes FROM read_parquet('{parquet_glob}')
+                WHERE SQLDATE >= ? AND SQLDATE < ? AND themes IS NOT NULL
+            ), expanded AS (
+                SELECT unnest({theme_array}) AS theme FROM source
+            ), classified AS (
+                SELECT CASE {' '.join(cases)} END AS category FROM expanded
+            )
+            SELECT category, COUNT(*) FROM classified
+            WHERE category IS NOT NULL GROUP BY category
+            """, [start_int, end_int]
         ).fetchall()
     finally:
         conn.close()
 
     category_counts = {cat: 0 for cat in THEME_CATEGORY_MAP}
 
-    for (themes_val,) in rows:
-        if not themes_val:
-            continue
-        if isinstance(themes_val, str):
-            theme_list = [t.strip() for t in themes_val.split(';') if t.strip()]
-        else:
-            theme_list = list(themes_val)
-
-        for theme in theme_list:
-            theme_upper = theme.upper()
-            for category, prefixes in THEME_CATEGORY_MAP.items():
-                if any(theme_upper.startswith(p) or p in theme_upper for p in prefixes):
-                    category_counts[category] += 1
-                    break
+    category_counts.update({category: int(count) for category, count in rows})
 
     return category_counts
 

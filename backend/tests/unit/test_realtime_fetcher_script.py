@@ -3,12 +3,15 @@ import zipfile
 
 import pandas as pd
 import pytest
+import httpx
+import respx
 
 from scripts.realtime_fetcher import (
     dedupe_against_recent,
     load_recent_event_ids,
     parse_events_zip_to_dataframe,
     parse_lastupdate_events_url,
+    run_realtime_fetch,
 )
 
 
@@ -31,7 +34,7 @@ def test_parse_lastupdate_events_url_missing_events_line() -> None:
 
 
 def test_parse_events_zip_to_dataframe_projects_columns() -> None:
-    row = [""] * 58
+    row = [""] * 61
     row[0] = "1001"
     row[1] = "20260318"
     row[2] = "202603"
@@ -49,11 +52,11 @@ def test_parse_events_zip_to_dataframe_projects_columns() -> None:
     row[32] = "3"
     row[34] = "-4.2"
     row[37] = "IND"
-    row[44] = "PAK"
-    row[51] = "IND"
-    row[53] = "23.03"
-    row[54] = "72.58"
-    row[57] = "https://example.com"
+    row[45] = "PAK"
+    row[53] = "IND"
+    row[56] = "23.03"
+    row[57] = "72.58"
+    row[60] = "https://example.com"
 
     zipped = _build_zip_with_tsv("\t".join(row) + "\n")
     df = parse_events_zip_to_dataframe(zipped)
@@ -62,6 +65,26 @@ def test_parse_events_zip_to_dataframe_projects_columns() -> None:
     assert int(df.iloc[0]["GLOBALEVENTID"]) == 1001
     assert int(df.iloc[0]["SQLDATE"]) == 20260318
     assert df.iloc[0]["SOURCEURL"] == "https://example.com"
+
+
+def test_realtime_manifest_follows_redirect(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "scripts.realtime_fetcher.fetch_csv_zip_to_df",
+        lambda *args, **kwargs: pd.DataFrame(),
+    )
+    with respx.mock:
+        respx.get("https://data.gdeltproject.org/gdeltv2/lastupdate.txt").mock(
+            return_value=httpx.Response(301, headers={"location": "/gdeltv2/latest.txt"})
+        )
+        redirected = respx.get("https://data.gdeltproject.org/gdeltv2/latest.txt").mock(
+            return_value=httpx.Response(200, text=(
+                "1 hash https://example.com/export.CSV.zip\n"
+                "1 hash https://example.com/mentions.CSV.zip\n"
+                "1 hash https://example.com/gkg.csv.zip\n"
+            ))
+        )
+        assert run_realtime_fetch() is None
+        assert redirected.call_count == 1
 
 
 def test_dedupe_against_recent_removes_existing_ids() -> None:

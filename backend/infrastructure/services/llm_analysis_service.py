@@ -1,4 +1,4 @@
-"""LLM analysis service — implements ILLMAnalysisService using Groq.
+"""LLM analysis service using OpenRouter or Groq chat completions.
 
 Uses Groq-hosted models to perform deep intelligence analysis on news article text.
 """
@@ -6,6 +6,7 @@ Uses Groq-hosted models to perform deep intelligence analysis on news article te
 from __future__ import annotations
 
 import structlog
+import httpx
 
 try:
     from groq import AsyncGroq
@@ -23,20 +24,25 @@ class LLMAnalysisService(ILLMAnalysisService):
     """Groq implementation of the LLM analysis service."""
 
     def __init__(self, settings: Settings) -> None:
-        if AsyncGroq is None:
+        if AsyncGroq is None and not settings.openrouter_api_key:
             raise RuntimeError("groq is required for LLM analysis but is not installed")
-        if not settings.groq_api_key:
-            raise RuntimeError("GROQ_API_KEY is required for LLM analysis")
-
-        self._client = AsyncGroq(api_key=settings.groq_api_key)
-        self._model_name = settings.groq_model_name
+        if settings.openrouter_api_key:
+            self._client = None
+            self._model_name = settings.openrouter_model_name
+        elif settings.groq_api_key:
+            self._client = AsyncGroq(api_key=settings.groq_api_key)
+            self._model_name = settings.groq_model_name
+        else:
+            raise RuntimeError("An OpenRouter or Groq API key is required for LLM analysis")
+        self._openrouter_api_key = settings.openrouter_api_key
+        self._fallback_model_name = settings.openrouter_fallback_model_name
 
     async def analyze_event(self, article_text: str) -> EventAnalysis:
         """Analyze article text and return structured intelligence."""
         logger.info("llm_analysis_start", text_length=len(article_text))
 
         try:
-            completion = await self._client.chat.completions.create(
+            payload = dict(
                 model=self._model_name,
                 messages=[
                     {
@@ -65,7 +71,22 @@ class LLMAnalysisService(ILLMAnalysisService):
                 response_format={"type": "json_object"},
             )
 
-            content = completion.choices[0].message.content if completion.choices else None
+            if self._openrouter_api_key:
+                payload["max_tokens"] = 1024
+                payload["reasoning"] = {"enabled": False}
+                payload["models"] = list(dict.fromkeys([payload.pop("model"), self._fallback_model_name]))
+                async with httpx.AsyncClient(timeout=90) as client:
+                    response = await client.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {self._openrouter_api_key}"},
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    choices = response.json().get("choices", [])
+                    content = choices[0]["message"].get("content") if choices else None
+            else:
+                completion = await self._client.chat.completions.create(**payload)
+                content = completion.choices[0].message.content if completion.choices else None
             if not content:
                 raise RuntimeError("Groq returned an empty completion")
 

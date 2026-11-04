@@ -75,6 +75,16 @@ class Settings(BaseSettings):
     )
 
     # --- AI / LLM ---
+    openrouter_api_key: str | None = Field(default=None)
+    openrouter_model_name: str = Field(
+        default="google/gemma-4-26b-a4b-it:free",
+        pattern=r"^.+:free$",
+        description="OpenRouter free model ID; paid model IDs are rejected.",
+    )
+    openrouter_fallback_model_name: str = Field(
+        default="nvidia/nemotron-3.5-super-vl:free", pattern=r"^.+:free$",
+        description="Free-only model used if the primary OpenRouter model is unavailable.",
+    )
     groq_api_key: str | None = Field(
         default=None,
         description="Groq API key used for on-demand event analysis and briefings.",

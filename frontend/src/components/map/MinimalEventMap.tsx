@@ -5,7 +5,6 @@ import type { Feature, FeatureCollection, Point } from 'geojson';
 import { useQuery } from '@tanstack/react-query';
 import { useStore } from '../../store/useStore';
 import { apiService } from '../../services/api';
-import type { MapAggregation } from '../../types';
 
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 const HAS_MAPBOX_TOKEN =

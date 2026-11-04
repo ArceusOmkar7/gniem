@@ -75,6 +75,8 @@ class TestBigQueryClient:
         rows = client.execute_query("SELECT 1 AS n")
         assert rows == [{"n": 1}]
         assert client._client.query.call_count == 2
+        actual_config = client._client.query.call_args.kwargs["job_config"]
+        assert actual_config.maximum_bytes_billed == test_settings.bq_max_scan_bytes
 
     @patch('backend.infrastructure.data_access.bigquery_client.bigquery.Client')
     def test_health_check_success(self, mock_bq_client, test_settings):

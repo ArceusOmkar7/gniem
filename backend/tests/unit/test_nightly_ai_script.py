@@ -1,11 +1,58 @@
 from pathlib import Path
+import pandas as pd
+import pytest
+import httpx
+import respx
+import json
+from backend.infrastructure.config.settings import Settings
 
 from scripts.nightly_ai import (
     fallback_briefing,
     is_low_quality_briefing,
     load_gdelt_country_code_labels,
     sql_date_int,
+    build_theme_category_counts,
+    THEME_CATEGORY_MAP,
+    GroqBriefingClient,
 )
+
+
+@pytest.mark.asyncio
+async def test_openrouter_briefing_routes_through_free_model_fallbacks():
+    client = GroqBriefingClient(api_key="test-key", model="google/gemma-4-26b-a4b-it:free",
+        base_url="https://openrouter.ai/api/v1", fallback_model="nvidia/nemotron-3.5-super-vl:free")
+    with respx.mock:
+        route = respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+            return_value=httpx.Response(200, json={"choices": [{"message": {"content": "Metrics summary."}}]})
+        )
+        assert await client.generate_briefing("US", "United States", "10 events") == "Metrics summary."
+        payload = json.loads(route.calls[0].request.content)
+        assert payload["models"] == [client.model, client.fallback_model]
+        assert "model" not in payload
+        assert all(model.endswith(":free") for model in payload["models"])
+
+
+@pytest.mark.parametrize("string_column", [False, True])
+def test_theme_aggregation_preserves_priority_duplicates_and_window(tmp_path, string_column):
+    hot = tmp_path / "hot"
+    hot.mkdir()
+    themes = ["TRADE", "GOVERNMENT", "ENERGY_TRADE", "unmatched", "trade", "TRADE"]
+    rows = [
+        {"SQLDATE": 20261102, "themes": themes},
+        {"SQLDATE": 20261026, "themes": ["ECON_ELECTIONS"]},
+        {"SQLDATE": 20261025, "themes": ["PANDEMIC"]},
+        {"SQLDATE": 20261102, "themes": None},
+        {"SQLDATE": 20261102, "themes": []},
+    ]
+    if string_column:
+        for row in rows:
+            if row["themes"] is not None:
+                row["themes"] = " ; ".join(row["themes"])
+    pd.DataFrame(rows).to_parquet(hot / "events.parquet", index=False)
+    settings = Settings(gcp_project_id="test", hot_tier_path=str(hot), cache_path=str(tmp_path / "cache"))
+    expected = dict.fromkeys(THEME_CATEGORY_MAP, 0)
+    expected.update(POLITICS=2, ECONOMY=4)
+    assert build_theme_category_counts(settings) == expected
 
 
 def test_sql_date_int_uses_yyyymmdd_integer() -> None:

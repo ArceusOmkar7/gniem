@@ -1,0 +1,69 @@
+name: gniem
+
+x-runtime: &runtime
+  user: "1000:1000"
+  env_file: .env.gcp
+  environment:
+    HOT_TIER_PATH: /data/hot_tier
+    CACHE_PATH: /data/cache
+    ACTION_GEO_COUNTRY_CODES_PATH: /data/LOOKUP-COUNTRIES.txt
+    CAMEO_COUNTRY_CODES_PATH: /data/CAMEO.country.txt
+    GDELT_COUNTRY_CODES_PATH: /data/CAMEO.country.txt
+    TZ: UTC
+  volumes:
+    - gniem-data:/data
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  init-data:
+    image: gniem-backend:latest
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["mkdir -p /data/hot_tier /data/cache && chown -R 1000:1000 /data"]
+    volumes:
+      - gniem-data:/data
+    restart: "no"
+  backend:
+    <<: *runtime
+    image: gniem-backend:latest
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    expose: ["8000"]
+    depends_on:
+      init-data:
+        condition: service_completed_successfully
+  scheduler:
+    <<: *runtime
+    build:
+      context: .
+      dockerfile: scheduler/Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+        VITE_MAPBOX_ACCESS_TOKEN: ${VITE_MAPBOX_ACCESS_TOKEN:-}
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  gniem-data:

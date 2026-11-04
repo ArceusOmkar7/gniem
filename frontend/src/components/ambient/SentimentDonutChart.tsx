@@ -1,5 +1,5 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useStore } from '../../store/useStore';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
@@ -22,8 +22,6 @@ export const SentimentDonutChart: React.FC = () => {
     { name: 'Neutral', value: sentiment?.neutral || 0, color: '#fbbf24' },
     { name: 'Positive', value: sentiment?.positive || 0, color: '#22c55e' },
   ].filter(d => d.value > 0);
-
-  const total = chartData.reduce((acc, curr) => acc + curr.value, 0);
 
   return (
     <div className="glass-panel p-5 rounded-xl shadow-lg border-white/5 flex flex-col h-full">
@@ -54,7 +52,7 @@ export const SentimentDonutChart: React.FC = () => {
                   paddingAngle={5}
                   dataKey="value"
                   stroke="none"
-                  label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                  label={({ percent = 0 }) => `${(percent * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
                   {chartData.map((entry, index) => (

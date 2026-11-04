@@ -152,7 +152,10 @@ class BigQueryClient:
             estimated_bytes=estimated_bytes,
             sql_preview=sql[:200],
         )
-        job_config = bigquery.QueryJobConfig(query_parameters=query_parameters)
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=query_parameters,
+            maximum_bytes_billed=max_scan_bytes,
+        )
 
         start = time.monotonic()
         try:

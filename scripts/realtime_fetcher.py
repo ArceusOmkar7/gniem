@@ -224,8 +224,8 @@ def run_realtime_fetch() -> Path | None:
     settings = Settings()
 
     try:
-        with httpx.Client(timeout=20) as client:
-            r = client.get("http://data.gdeltproject.org/gdeltv2/lastupdate.txt")
+        with httpx.Client(timeout=20, follow_redirects=True) as client:
+            r = client.get("https://data.gdeltproject.org/gdeltv2/lastupdate.txt")
             r.raise_for_status()
             urls = parse_lastupdate_urls(r.text)
     except Exception as e:

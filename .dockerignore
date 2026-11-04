@@ -1,4 +1,5 @@
 **/.venv
+**/.venv*
 **/venv
 **/__pycache__
 **/.pytest_cache
@@ -8,6 +9,9 @@ backend/tests
 frontend/node_modules
 dist
 .env
+.env.gcp
+.env.public
+ACCESS.txt
 *.json
 !package.json
 !tsconfig.json
