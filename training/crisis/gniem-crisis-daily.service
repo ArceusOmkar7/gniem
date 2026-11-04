@@ -1,0 +1,10 @@
+[Unit]
+Description=GNIEM daily country news-activity onset scores
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/gniem
+ExecStart=/usr/bin/docker compose --env-file .env.gcp -f compose.gcp.yml -f compose.crisis.yml --profile training run --rm --no-deps crisis-worker sh training/crisis/daily.sh
+TimeoutStartSec=1800

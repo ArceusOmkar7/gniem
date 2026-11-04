@@ -19,6 +19,7 @@ from backend.api.routers import events as events_router
 from backend.api.routers import health as health_router
 from backend.api.routers import analytics as analytics_router
 from backend.api.routers import map as map_router
+from backend.api.routers import crisis as crisis_router
 from backend.api.routers.events import _get_use_case, _get_analyze_use_case, _get_hot_repository as _get_events_hot_repo
 from backend.api.routers.health import (
     _get_bq_client,
@@ -150,6 +151,8 @@ def create_app() -> FastAPI:
         map_router.router,
         prefix=settings.api_v1_prefix,
     )
+
+    app.include_router(crisis_router.router, prefix=settings.api_v1_prefix)
 
     # --- Structured exception handlers ---
     @app.middleware("http")

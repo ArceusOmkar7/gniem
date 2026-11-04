@@ -1,5 +1,14 @@
 # GNIEM — Global News Intelligence & Event Monitoring System
 
+Live deployment: [gniem.omkarmahindrakar.tech](https://gniem.omkarmahindrakar.tech).
+For the current VM setup and attached service account, see [GCP deployment](DEPLOYMENT-GCP.md).
+
+**Experimental deep learning:** a focal-loss TCN forecasts country/region
+news-activity spike onsets over the next three days. Read the
+[pipeline and reproduction guide](training/crisis/README.md) and
+[held-out results](docs/crisis-onset/RESULTS.md). A spike is a coverage-volume
+proxy, not an independently verified crisis; model scores are uncalibrated.
+
 GNIEM is a geopolitical intelligence dashboard and event-monitoring platform built on top of the GDELT 2.1 global database. The project implements a cost-optimized, hybrid OLAP architecture to serve analytical and predictive intelligence without the high infrastructure overhead typically associated with multi-terabyte datasets.
 
 <p align="center">

@@ -1,0 +1,5 @@
+.crisis-muted { color: #a9b4c3; }
+.crisis-note { color: #fbbf24; }
+[data-theme="light"] .crisis-muted { color: #475569; }
+[data-theme="light"] .crisis-note { color: #92400e; }
+.crisis-onset-table th, .crisis-onset-table td { padding-right: 0.75rem; }

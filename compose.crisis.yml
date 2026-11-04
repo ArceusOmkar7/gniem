@@ -1,0 +1,14 @@
+services:
+  crisis-worker:
+    image: gniem-crisis:latest
+    build:
+      context: .
+      dockerfile: training/crisis/Dockerfile
+    profiles: ["training"]
+    env_file: .env.gcp
+    volumes:
+      - gniem-data:/data
+    command: ["sh", "training/crisis/run.sh"]
+    restart: "no"
+    mem_limit: 4g
+    cpus: 1.5

@@ -6,6 +6,7 @@ import { SystemControlPanel } from './components/tables/SystemControlPanel';
 import { GlobalStatsTicker } from './components/ambient/GlobalStatsTicker';
 import { TopThreatCard } from './components/ambient/TopThreatCard';
 import { SpikeAlertsCard } from './components/ambient/SpikeAlertsCard';
+import { CrisisOnsetCard } from './components/ambient/CrisisOnsetCard';
 import { TrendingNewsFeed } from './components/tables/TrendingNewsFeed';
 import { DateRangeSlider } from './components/ambient/DateRangeSlider';
 import { EventTrendChart } from './components/ambient/EventTrendChart';
@@ -18,7 +19,7 @@ import { SearchableDropdown, type DropdownOption } from './components/ambient/Se
 import { useStore } from './store/useStore';
 import { apiService } from './services/api';
 import { useQuery } from '@tanstack/react-query';
-import { Globe, Calendar, Terminal, Database, Activity, Layers, Map as MapIcon, ArrowLeft, X, Sun, Moon, Maximize2 } from 'lucide-react';
+import { Globe, Calendar, Terminal, Database, Activity, Layers, ArrowLeft, X, Sun, Moon, Maximize2 } from 'lucide-react';
 
 function formatDistanceToNow(dateStr: string | null): string {
   if (!dateStr) return 'NEVER';
@@ -419,6 +420,8 @@ function App() {
                   </div>
                 </div>
               </div>
+
+              <CrisisOnsetCard />
 
               {/* Row: YouTube Embed (LiveNewsWall) & Anomalies (SpikeAlertsCard) */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

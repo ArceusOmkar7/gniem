@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh GNIEM spike-onset scores daily after completed UTC data
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+Unit=gniem-crisis-daily.service
+
+[Install]
+WantedBy=timers.target

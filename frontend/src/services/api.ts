@@ -35,6 +35,11 @@ const appendGeoFilters = (
 };
 
 export const apiService = {
+  getCrisisOnset: async (): Promise<import('../types/crisis').CrisisOnsetResponse> => {
+    const response = await fetch(`${API_BASE_URL}/analytics/crisis-onset?limit=5`);
+    if (!response.ok) throw new Error('Spike-onset forecasts are unavailable.');
+    return response.json();
+  },
   getMapData: async (
     bbox: { n: number; s: number; e: number; w: number },
     zoom: number,
