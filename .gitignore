@@ -35,6 +35,7 @@ ACCESS.txt
 
 # Local runtime data
 data/
+output/
 
 # GCP keys — NEVER commit
 *.json
